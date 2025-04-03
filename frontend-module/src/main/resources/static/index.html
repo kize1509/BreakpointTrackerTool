@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breakpoint Visualizer</title>
+</head>
+<style>
+    body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f4f4f4;
+            }
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                color: #333;
+                margin-bottom: 20px;
+            }
+            .breakpoint-list {
+                background-color: white;
+                border-radius: 4px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                overflow: hidden;
+            }
+            caption{
+
+                font-size: 1.2em;
+                margin: 10px;
+                color: #555;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            th, td {
+                padding: 12px 15px;
+                text-align: left;
+                border-bottom: 1px solid #ddd;
+            }
+            th {
+                background-color: #f8f8f8;
+                font-weight: 500;
+            }
+            tr:hover {
+                background-color: #f1f1f1;
+            }
+            .empty-state {
+                padding: 40px;
+                text-align: center;
+                color: #888;
+            }
+            .status-enabled {
+                color: #28a745;
+            }
+            .status-disabled {
+                color: #dc3545;
+            }
+            .timestamp {
+                margin-top: 10px;
+                font-size: 12px;
+                color: #999;
+            }
+</style>
+<body>
+<div class="container">
+    <h1>Breakpoint Visualizer</h1>
+    <div id="breakpoints-container" class="breakpoint-list">
+        <div class="empty-state">
+            <p>Loading breakpoints...</p>
+        </div>
+    </div>
+    <div class="timestamp" id="timestamp"></div>
+</div>
+
+<script>
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/breakpoints`;
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = function() {
+        console.log('WebSocket connection established');
+        socket.send(JSON.stringify({ping: true}));
+            };
+
+    socket.onmessage = function(event) {
+        try {
+            const data = JSON.parse(event.data);
+            console.log('Received data:', data);
+            renderBreakpoints(data);
+        } catch (e) {
+            console.error('Error parsing breakpoint data:', e);
+            document.getElementById('breakpoints-container').innerHTML =
+                `<div class="empty-state"><p>Error displaying breakpoints: ${e.message}</p></div>`;
+        }
+    };
+
+    socket.onclose = function() {
+        console.log('WebSocket connection closed');
+    };
+
+    function renderBreakpoints(data) {
+        const container = document.getElementById('breakpoints-container');
+        const timestamp = document.getElementById('timestamp');
+
+        if (!data || !data.breakpoints || data.breakpoints.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>No breakpoints are set in this project</p>
+                </div>
+            `;
+            timestamp.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+            return;
+        }
+
+        let html = `
+            <table>
+                <caption>Total number of breakpoints: ${data.breakpoints.length}</caption>
+                <thead>
+
+                    <tr>
+                        <th>File</th>
+                        <th>Line</th>
+                        <th>Status</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        data.breakpoints.forEach(bp => {
+            const statusClass = bp.enabled ? 'status-enabled' : 'status-disabled';
+
+            html += `
+                <tr>
+                    <td>${bp.fileName}</td>
+                    <td>${bp.line}</td>
+                    <td class="${statusClass}">${bp.enabled ? 'Enabled' : 'Disabled'}</td>
+                    <td>${bp.type}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        `;
+
+        container.innerHTML = html;
+        timestamp.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+    }
+</script>
+</body>
+</html>
