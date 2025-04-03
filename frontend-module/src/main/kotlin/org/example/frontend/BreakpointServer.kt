@@ -1,56 +1,28 @@
 package org.example.frontend
 
 import io.javalin.Javalin
-import io.javalin.http.Context
-import io.javalin.http.staticfiles.Location
-import io.javalin.websocket.WsContext
-import java.time.Duration
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
+import org.example.frontend.config.WebServerConfig
+import org.example.frontend.controller.HealthCheckController
+import org.example.frontend.websocket.WebSocketHandler
 
 class BreakpointServer(private val port: Int = 0) {
-    private val app = Javalin.create { config ->
-        config.staticFiles.add { staticFiles ->
-            staticFiles.directory = "/static"
-            staticFiles.location = Location.CLASSPATH
-        }
-    }
+    private val webServerConfig = WebServerConfig(port)
+    private val wsHandler = WebSocketHandler()
+    private val healthCheckController = HealthCheckController()
 
-    private val wsConnections = ConcurrentHashMap<Int, WsContext>()
-    private val nextId = AtomicInteger(0)
+    private lateinit var app: Javalin
     private var actualPort: Int = 0
 
-    private var onFrontendReadyCallback: (() -> Unit)? = null
-
     fun start(): Int {
+        app = webServerConfig.configureJavalin()
+
         app.ws("/breakpoints") { ws ->
-            ws.onConnect { ctx ->
-                val id = nextId.incrementAndGet()
-                wsConnections[id] = ctx
-                ctx.session.idleTimeout = Duration.of(60, java.time.temporal.ChronoUnit.SECONDS)
-                println("Client connected: $id")
-            }
-
-            ws.onMessage { ctx ->
-                val message = ctx.message()
-                println("Received WebSocket message: $message")
-
-                if (message.contains("\"ping\":true")) {
-                    println("Frontend is ready, initializing listeners")
-                    onFrontendReadyCallback?.invoke()
-                }
-            }
-
-            ws.onClose { ctx ->
-                wsConnections.entries.removeIf { it.value === ctx }
-            }
+            wsHandler.configure(ws)
         }
 
-        app.get("/health") { ctx ->
-            ctx.result("Breakpoint server running")
-        }
+        healthCheckController.register(app)
 
-        actualPort = if (port > 0) port else findAvailablePort()
+        actualPort = webServerConfig.determinePort()
         app.start(actualPort)
         return actualPort
     }
@@ -60,17 +32,11 @@ class BreakpointServer(private val port: Int = 0) {
     }
 
     fun updateBreakpoints(breakpointData: String) {
-        wsConnections.values.forEach { ctx ->
-            ctx.send(breakpointData)
-        }
+        wsHandler.broadcastToAll(breakpointData)
     }
 
     fun setOnFrontendReadyCallback(callback: () -> Unit) {
-        this.onFrontendReadyCallback = callback
-    }
-
-    private fun findAvailablePort(): Int {
-        return 8080
+        wsHandler.setOnFrontendReadyCallback(callback)
     }
 
     fun getServerUrl(): String {
