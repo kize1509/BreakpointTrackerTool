@@ -1,5 +1,5 @@
 package org.example.frontend
-
+import org.example.pluginmodule.services.BreakpointService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail

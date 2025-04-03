@@ -51,7 +51,7 @@ class BreakpointServiceImpl(
         )
     }
 
-    private fun notifyBreakpointsChanged() {
+    fun notifyBreakpointsChanged() {
         try {
             val breakpointData = getAllBreakpoints()
             onBreakpointsChanged(breakpointData)

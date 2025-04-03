@@ -5,7 +5,7 @@ import org.example.frontend.config.WebServerConfig
 import org.example.frontend.controller.HealthCheckController
 import org.example.frontend.websocket.WebSocketHandler
 
-class BreakpointServer(private val port: Int = 0) {
+open class BreakpointServer(private val port: Int = 0) {
     private val webServerConfig = WebServerConfig(port)
     private val wsHandler = WebSocketHandler()
     private val healthCheckController = HealthCheckController()

@@ -1,5 +1,5 @@
 package org.example.frontend.config
-
+import java.net.ServerSocket
 import io.javalin.Javalin
 import io.javalin.http.staticfiles.Location
 
@@ -18,6 +18,8 @@ class WebServerConfig(private val port: Int) {
     }
 
     private fun findAvailablePort(): Int {
-        return 8080 // In real implementation, this would scan for an available port
+        ServerSocket(0).use { socket ->
+            return socket.localPort
+        }
     }
 }

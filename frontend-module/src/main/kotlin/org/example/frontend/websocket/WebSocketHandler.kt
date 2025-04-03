@@ -15,7 +15,7 @@ class WebSocketHandler {
         wsConfig.onConnect { ctx ->
             val id = nextId.incrementAndGet()
             wsConnections[id] = ctx
-            ctx.session.idleTimeout = Duration.of(60, java.time.temporal.ChronoUnit.SECONDS)
+            ctx.session.idleTimeout = Duration.of(60, java.time.temporal.ChronoUnit.MINUTES)
             println("Client connected: $id")
         }
 
